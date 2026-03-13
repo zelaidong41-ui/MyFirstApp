@@ -24,7 +24,6 @@
 
 ### 📸 运行预览
 
-
 ### 🏗️ 如何运行
 1. `git clone https://github.com/zelaidong41-ui/MyFirstApp.git`
 2. 使用 Android Studio 打开项目。
