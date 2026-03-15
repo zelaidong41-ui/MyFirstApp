@@ -3,6 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+<<<<<<< HEAD
+=======
+
+>>>>>>> ee95bee35c28e3a0eba844758240b5e5a1f5e1de
     <application
         android:usesCleartextTraffic="true"
         android:allowBackup="true"
@@ -13,7 +17,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyFirstApp">
+<<<<<<< HEAD
         <activity android:name=".DetailActivity" />
+=======
+>>>>>>> ee95bee35c28e3a0eba844758240b5e5a1f5e1de
         <activity
             android:name=".WelcomeActivity"
             android:exported="false" />
