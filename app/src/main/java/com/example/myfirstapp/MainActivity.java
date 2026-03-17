@@ -1,7 +1,5 @@
 package com.example.myfirstapp;
 
-
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -11,82 +9,75 @@ import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-    List<String> myGlobalOfferList;
-    OfferAdapter adapter;
-
     // 🌟 全局唯一的数据仓库！
-    private OfferAdapter myAdapter;
+    List<String> myGlobalOfferList;
+    // 🌟 全局唯一的兵工厂（把两个 Adapter 合并成一个了！）
+    OfferAdapter myAdapter;
 
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
+        // 1. 去保险箱提货（保留本地垫底数据）
+        myGlobalOfferList = loadOffersFromSafe();
 
-        @Override
-        protected void onCreate(Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            setContentView(R.layout.activity_main);
-// 1. 去保险箱提货（保留这一句，把本地的存货先拿出来垫底）
-            myGlobalOfferList = loadOffersFromSafe();
+        // 2. 找到屏幕上的列表控件
+        RecyclerView myOfferList = findViewById(R.id.myOfferList);
+        myOfferList.setLayoutManager(new LinearLayoutManager(this));
 
-            // ==========================================
-            // 🚨 极其关键的抢救：在这里插队！必须先造出 adapter！
-            // ==========================================
-            RecyclerView myOfferList = findViewById(R.id.myOfferList);
-            myOfferList.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
-
-            adapter = new OfferAdapter(myGlobalOfferList); // 👈 给全局 adapter 注入灵魂！
-            myOfferList.setAdapter(adapter);
-
-            retrofit2.Retrofit retrofit = new retrofit2.Retrofit.Builder()
-                    .baseUrl("https://www.wanandroid.com/")
-                    .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
-                    .build();
-
-
-            ApiService apiService = retrofit.create(ApiService.class);
-
-            apiService.getArticles().enqueue(new retrofit2.Callback<WanResponse>() {
-                @Override
-                public void onResponse(retrofit2.Call<WanResponse> call, retrofit2.Response<WanResponse> response) {
-                    if (response.isSuccessful() && response.body() != null) {
-                        java.util.List<WanResponse.Article> realArticles = response.body().data.datas;
-
-                        // 🚨 注意：这里换成了你自己的变量名 myGlobalOfferList
-                        myGlobalOfferList.clear(); // 把保险箱里的旧数据清空
-
-                        for (WanResponse.Article article : realArticles) {
-                            myGlobalOfferList.add(article.title); // 塞入玩安卓真实的开源文章标题
-                        }
-
-                        // 极其关键：通知 Adapter 刷新屏幕！
-                        adapter.notifyDataSetChanged();
-
-                        // 顺手把从网上刚进的真货，存进你的本地保险箱里！
-                        saveOffersToSafe(myGlobalOfferList);
-                    }
-                }
-
-                @Override
-                public void onFailure(retrofit2.Call<WanResponse> call, Throwable t) {
-                    android.widget.Toast.makeText(MainActivity.this, "网络请求失败，请检查网络！", android.widget.Toast.LENGTH_SHORT).show();
-                }
-            });
-
-            // ==========================================
-            // 👇 下面是你原来绑定 RecyclerView 和 Adapter 的代码，一行都千万别动！
-            // RecyclerView recyclerView = findViewById(R.id.recyclerView);
-            // adapter = new OfferAdapter(myGlobalOfferList);
-            // ...
-
-
-
-        // 3. 组装机关枪和兵工厂
+        // 3. 给全局唯一 adapter 注入灵魂，并立刻绑到屏幕上！
         myAdapter = new OfferAdapter(myGlobalOfferList);
+        myOfferList.setAdapter(myAdapter);
 
-        // 4. 控制台：添加新 Offer
+        // ==========================================
+        // 🌐 全新一代：Retrofit 真实网络请求引擎
+        // ==========================================
+        retrofit2.Retrofit retrofit = new retrofit2.Retrofit.Builder()
+                .baseUrl("https://www.wanandroid.com/")
+                .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
+                .build();
+
+        ApiService apiService = retrofit.create(ApiService.class);
+
+        apiService.getArticles().enqueue(new retrofit2.Callback<WanResponse>() {
+            @Override
+            public void onResponse(retrofit2.Call<WanResponse> call, retrofit2.Response<WanResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    // 拿到真实的战利品！
+                    List<WanResponse.Article> realArticles = response.body().data.datas;
+
+                    myGlobalOfferList.clear(); // 把保险箱里的旧数据清空
+
+                    for (WanResponse.Article article : realArticles) {
+                        myGlobalOfferList.add(article.title); // 塞入玩安卓真实的开源文章标题
+                    }
+
+                    // 极其关键：通知真正的 myAdapter 刷新屏幕！
+                    myAdapter.notifyDataSetChanged();
+
+                    // 顺手把从网上刚进的真货，存进你的本地保险箱里！
+                    saveOffersToSafe(myGlobalOfferList);
+
+                    Toast.makeText(MainActivity.this, "牛逼！连上真实服务器了！", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(retrofit2.Call<WanResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "网络请求失败，请检查网络！", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // ==========================================
+        // 🎮 控制台：手动添加新 Offer
+        // ==========================================
         EditText etNewOffer = findViewById(R.id.etNewOffer);
         Button btnAddOffer = findViewById(R.id.btnAddOffer);
 
@@ -96,8 +87,8 @@ public class MainActivity extends AppCompatActivity {
                 String inputStr = etNewOffer.getText().toString();
                 if (inputStr.trim().isEmpty()) { return; }
 
-                myAdapter.addOffer(inputStr); // 呼叫兵工厂加子弹
-                saveOffersToSafe(myGlobalOfferList); // 🌟 双重保险：只要加了新数据，立刻锁进硬盘！
+                myAdapter.addOffer(inputStr); // 呼叫真正的兵工厂加子弹
+                saveOffersToSafe(myGlobalOfferList); // 🌟 双重保险：立刻锁进硬盘！
 
                 myOfferList.scrollToPosition(0);
                 etNewOffer.setText("");
@@ -120,10 +111,9 @@ public class MainActivity extends AppCompatActivity {
     private void saveOffersToSafe(List<String> listToSave) {
         SharedPreferences safe = getSharedPreferences("OfferSafe", MODE_PRIVATE);
         SharedPreferences.Editor editor = safe.edit();
-        // 缝合怪战术：用 ### 连起来
         String longString = TextUtils.join("###", listToSave);
         editor.putString("ALL_OFFERS", longString);
-        editor.commit(); // 强制立刻写入硬盘！
+        editor.commit();
     }
 
     private List<String> loadOffersFromSafe() {
@@ -131,7 +121,6 @@ public class MainActivity extends AppCompatActivity {
         String longString = safe.getString("ALL_OFFERS", "");
         List<String> resultList = new ArrayList<>();
         if (!longString.isEmpty()) {
-            // 切西瓜战术：用 ### 劈开
             String[] splitArray = longString.split("###");
             resultList.addAll(Arrays.asList(splitArray));
         }
