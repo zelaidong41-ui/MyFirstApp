@@ -3,6 +3,7 @@ package com.example.myfirstapp;
 import java.util.List;
 
 public class WanResponse {
+
     // 第一层：抓取核心的 data 数据块
     public WanData data;
 
@@ -14,7 +15,9 @@ public class WanResponse {
 
     // 第三层：定义每一篇文章的具体内容
     public static class Article {
+
         // 我们只需要文章的标题！
+        public String link; // 🌟 核心手术：加上这行致命的接货暗号！
         public String title;
     }
 }

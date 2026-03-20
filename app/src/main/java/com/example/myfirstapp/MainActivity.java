@@ -1,129 +1,125 @@
-package com.example.myfirstapp;
+package com.example.myfirstapp; // ⚠️ 注意：这行必须是你自己的包名！
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import android.content.SharedPreferences;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import android.os.Bundle;
-import android.text.TextUtils;
-import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.Toast;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
-    // 🌟 全局唯一的数据仓库！
-    List<String> myGlobalOfferList;
-    // 🌟 全局唯一的兵工厂（把两个 Adapter 合并成一个了！）
-    OfferAdapter myAdapter;
+
+    // 1. 准备大厅的基础装备
+    private List<String> myGlobalOfferList = new ArrayList<>();
+    private OfferAdapter myAdapter;
+    private SwipeRefreshLayout swipeRefresh;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // 1. 去保险箱提货（保留本地垫底数据）
-        myGlobalOfferList = loadOffersFromSafe();
-
-        // 2. 找到屏幕上的列表控件
+        // 2. 找到屏幕上的 UI 控件
         RecyclerView myOfferList = findViewById(R.id.myOfferList);
-        myOfferList.setLayoutManager(new LinearLayoutManager(this));
+        swipeRefresh = findViewById(R.id.swipeRefresh); // 确保你的 xml 里有这个下拉刷新控件
 
-        // 3. 给全局唯一 adapter 注入灵魂，并立刻绑到屏幕上！
+        // 3. 组装兵工厂 (RecyclerView)
+        myOfferList.setLayoutManager(new LinearLayoutManager(this));
         myAdapter = new OfferAdapter(myGlobalOfferList);
         myOfferList.setAdapter(myAdapter);
 
         // ==========================================
-        // 🌐 全新一代：Retrofit 真实网络请求引擎
+        // 🌟 离线秒开黑科技：App一启动，立刻去本地仓库提货！
         // ==========================================
-        retrofit2.Retrofit retrofit = new retrofit2.Retrofit.Builder()
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                AppDatabase db = AppDatabase.getDatabase(MainActivity.this);
+                List<ArticleEntity> savedArticles = db.articleDao().getAllArticles();
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (savedArticles != null && !savedArticles.isEmpty()) {
+                            myGlobalOfferList.clear();
+                            for (ArticleEntity entity : savedArticles) {
+                                myGlobalOfferList.add(entity.title + "@@@" + entity.link);
+                            }
+                            myAdapter.notifyDataSetChanged();
+                            Toast.makeText(MainActivity.this, "⚡ 已加载本地智能缓存", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }
+        }).start();
+
+        // 4. 下拉刷新兵营：只要用户一拉，就去服务器进货
+        swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                fetchDataFromServer();
+            }
+        });
+
+        // 5. 首次打开 App，自动触发一次网络请求抓新数据
+        fetchDataFromServer();
+    }
+
+    // ==========================================
+    // 🌐 独立出来的网络引擎：彻底告别大括号地狱！
+    // ==========================================
+    private void fetchDataFromServer() {
+        Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://www.wanandroid.com/")
-                .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
         ApiService apiService = retrofit.create(ApiService.class);
 
-        apiService.getArticles().enqueue(new retrofit2.Callback<WanResponse>() {
+        apiService.getArticles().enqueue(new Callback<WanResponse>() {
             @Override
-            public void onResponse(retrofit2.Call<WanResponse> call, retrofit2.Response<WanResponse> response) {
+            public void onResponse(Call<WanResponse> call, Response<WanResponse> response) {
+                // 收到消息，立刻把转圈圈停下
+                swipeRefresh.setRefreshing(false);
+
                 if (response.isSuccessful() && response.body() != null) {
-                    // 拿到真实的战利品！
                     List<WanResponse.Article> realArticles = response.body().data.datas;
 
-                    myGlobalOfferList.clear(); // 把保险箱里的旧数据清空
-
+                    // A. 更新前台屏幕
+                    myGlobalOfferList.clear();
                     for (WanResponse.Article article : realArticles) {
-                        myGlobalOfferList.add(article.title); // 塞入玩安卓真实的开源文章标题
+                        myGlobalOfferList.add(article.title + "@@@" + article.link);
                     }
-
-                    // 极其关键：通知真正的 myAdapter 刷新屏幕！
                     myAdapter.notifyDataSetChanged();
+                    Toast.makeText(MainActivity.this, "牛逼，连上服务器并存入 Room！", Toast.LENGTH_SHORT).show();
 
-                    // 顺手把从网上刚进的真货，存进你的本地保险箱里！
-                    saveOffersToSafe(myGlobalOfferList);
-
-                    Toast.makeText(MainActivity.this, "牛逼！连上真实服务器了！", Toast.LENGTH_SHORT).show();
+                    // B. 派人去后厨（Room）存货
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            AppDatabase db = AppDatabase.getDatabase(MainActivity.this);
+                            ArticleDao dao = db.articleDao();
+                            dao.deleteAll(); // 清空旧货
+                            for (WanResponse.Article article : realArticles) {
+                                dao.insertArticle(new ArticleEntity(article.title, article.link)); // 塞入新货
+                            }
+                        }
+                    }).start();
                 }
             }
 
             @Override
-            public void onFailure(retrofit2.Call<WanResponse> call, Throwable t) {
-                Toast.makeText(MainActivity.this, "网络请求失败，请检查网络！", Toast.LENGTH_SHORT).show();
+            public void onFailure(Call<WanResponse> call, Throwable t) {
+                swipeRefresh.setRefreshing(false);
+                Toast.makeText(MainActivity.this, "网络崩了，请检查网络！", Toast.LENGTH_SHORT).show();
             }
         });
-
-        // ==========================================
-        // 🎮 控制台：手动添加新 Offer
-        // ==========================================
-        EditText etNewOffer = findViewById(R.id.etNewOffer);
-        Button btnAddOffer = findViewById(R.id.btnAddOffer);
-
-        btnAddOffer.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String inputStr = etNewOffer.getText().toString();
-                if (inputStr.trim().isEmpty()) { return; }
-
-                myAdapter.addOffer(inputStr); // 呼叫真正的兵工厂加子弹
-                saveOffersToSafe(myGlobalOfferList); // 🌟 双重保险：立刻锁进硬盘！
-
-                myOfferList.scrollToPosition(0);
-                etNewOffer.setText("");
-            }
-        });
-    }
-
-    // 🌟 拦截临终遗言：退到后台时，再存一次！
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (myGlobalOfferList != null) {
-            saveOffersToSafe(myGlobalOfferList);
-        }
-    }
-
-    // ==========================================
-    // 👇 绝对靠谱的本地保险箱技术 👇
-    // ==========================================
-    private void saveOffersToSafe(List<String> listToSave) {
-        SharedPreferences safe = getSharedPreferences("OfferSafe", MODE_PRIVATE);
-        SharedPreferences.Editor editor = safe.edit();
-        String longString = TextUtils.join("###", listToSave);
-        editor.putString("ALL_OFFERS", longString);
-        editor.commit();
-    }
-
-    private List<String> loadOffersFromSafe() {
-        SharedPreferences safe = getSharedPreferences("OfferSafe", MODE_PRIVATE);
-        String longString = safe.getString("ALL_OFFERS", "");
-        List<String> resultList = new ArrayList<>();
-        if (!longString.isEmpty()) {
-            String[] splitArray = longString.split("###");
-            resultList.addAll(Arrays.asList(splitArray));
-        }
-        return resultList;
     }
 }

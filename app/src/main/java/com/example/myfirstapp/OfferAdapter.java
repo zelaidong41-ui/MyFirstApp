@@ -32,15 +32,22 @@ public class OfferAdapter extends RecyclerView.Adapter<OfferAdapter.OfferViewHol
     // 核心步骤 2：填火药（把真实的 Offer 名字，写到子弹的 TextView 上）
     @Override
     public void onBindViewHolder(@NonNull OfferViewHolder holder, int position) {
-        // 现在拉下来的是文章标题了！
-        String realOffer = offerList.get(position);
-        holder.tvOffer.setText(realOffer);
+
+        // 🌟 1. 核心拆解：一刀切开！parts[0] 是标题，parts[1] 是网址
+        String rawData = offerList.get(position);
+        String[] parts = rawData.split("@@@");
+        String title = parts[0];
+        // 万一旧数据没有网址，给个默认防崩网址
+        String link = parts.length > 1 ? parts[1] : "https://www.wanandroid.com";
+
+        // 🌟 2. 屏幕上只显示纯净的标题
+        holder.tvOffer.setText(title);
 
         // ==========================================
-        // 🌟 全新一代智能分拣机：极客热词雷达！
+        // 🌟 完美保留你的高级货：极客热词雷达！(根据纯标题识别)
         // ==========================================
         String imageUrl;
-        String lowerCaseTitle = realOffer.toLowerCase();
+        String lowerCaseTitle = title.toLowerCase();
 
         if (lowerCaseTitle.contains("android") || lowerCaseTitle.contains("安卓")) {
             imageUrl = "https://ui-avatars.com/api/?name=And&background=3DDC84&color=fff&size=128";
@@ -60,22 +67,21 @@ public class OfferAdapter extends RecyclerView.Adapter<OfferAdapter.OfferViewHol
                 .error(R.mipmap.ic_launcher)
                 .into(holder.ivLogo);
 
-        // 👇 1. 短按雷达：真正的跳转，去 WebView 搜索当前标题！
+        // 👇 3. 短按雷达改造：不用之前那个搜索链接了，带上真正的 link，踢进咱们刚刚精装修的 ArticleActivity！
         holder.itemView.setOnClickListener(v -> {
-            String searchUrl = "https://www.wanandroid.com/article/query?k=" + realOffer;
-            Intent intent = new Intent(v.getContext(), DetailActivity.class);
-            intent.putExtra("ARTICLE_URL", searchUrl);
+            android.content.Intent intent = new android.content.Intent(v.getContext(), ArticleActivity.class);
+            intent.putExtra("URL_KEY", link); // 行李箱里塞入真实的网址
             v.getContext().startActivity(intent);
         });
 
-        // 👇 2. 长按毁灭装置：拒绝 Offer（从列表里踢出去）
-        holder.itemView.setOnLongClickListener(new View.OnLongClickListener() {
+        // 👇 4. 完美保留你的长按毁灭装置！
+        holder.itemView.setOnLongClickListener(new android.view.View.OnLongClickListener() {
             @Override
-            public boolean onLongClick(View v) {
+            public boolean onLongClick(android.view.View v) {
                 int currentPosition = holder.getAdapterPosition();
                 offerList.remove(currentPosition);
                 notifyItemRemoved(currentPosition);
-                Toast.makeText(v.getContext(), "已残忍拒绝：" + realOffer, Toast.LENGTH_SHORT).show();
+                android.widget.Toast.makeText(v.getContext(), "已残忍拒绝：" + title, android.widget.Toast.LENGTH_SHORT).show();
                 return true;
             }
         });

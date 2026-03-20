@@ -40,6 +40,8 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     // Gson 转换器
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    // 引入下拉刷新战甲扩展包
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
@@ -51,4 +53,9 @@ dependencies {
     // 👇 申请网络请求终极武器：Retrofit 与 Gson 翻译官 👇
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    // 🌟 引入谷歌官方 Room 数据库核心引擎
+    // 🌟 引入谷歌官方 Room 数据库核心引擎 (Kotlin 语法版)
+    val room_version = "2.6.1"
+    implementation("androidx.room:room-runtime:$room_version")
+    annotationProcessor("androidx.room:room-compiler:$room_version")
 }
