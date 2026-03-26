@@ -1,19 +1,16 @@
 plugins {
-    alias(libs.plugins.android.application)
+    id("com.android.application")
+    // 删掉了 id("org.jetbrains.kotlin.android")，因为它已经“注册过了”
 }
 
 android {
     namespace = "com.example.myfirstapp"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 34 // 确保这里是 34，不要用那个复杂的 release(36)
 
     defaultConfig {
         applicationId = "com.example.myfirstapp"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -29,33 +26,43 @@ android {
             )
         }
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
+
 }
 
 dependencies {
-    // Retrofit 核心网络库
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    // Gson 转换器
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    // 引入下拉刷新战甲扩展包
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    // 1. 基础 UI 库（保持不动）
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.ext.junit)
-    androidTestImplementation(libs.espresso.core)
-    implementation("com.github.bumptech.glide:glide:4.16.0")
-    // 👇 申请网络请求终极武器：Retrofit 与 Gson 翻译官 👇
+
+    // 2. 网络与图片（保持不动）
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    // 🌟 引入谷歌官方 Room 数据库核心引擎
-    // 🌟 引入谷歌官方 Room 数据库核心引擎 (Kotlin 语法版)
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+
+    // 3. 📷 CameraX 引擎（保持不动）
+    val camerax_version = "1.3.0"
+    implementation("androidx.camera:camera-core:$camerax_version")
+    implementation("androidx.camera:camera-camera2:$camerax_version")
+    implementation("androidx.camera:camera-lifecycle:$camerax_version")
+    implementation("androidx.camera:camera-view:$camerax_version")
+
+    // 🧠 J.A.R.V.I.S 视觉大脑 (全新升级版：Google ML Kit)
+    implementation("com.google.mlkit:image-labeling:17.0.7")
+
+    // 5. 🌟 Room 数据库（保持不动）
     val room_version = "2.6.1"
     implementation("androidx.room:room-runtime:$room_version")
     annotationProcessor("androidx.room:room-compiler:$room_version")
+
+    // 测试库
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.ext.junit)
+    androidTestImplementation(libs.espresso.core)
 }
