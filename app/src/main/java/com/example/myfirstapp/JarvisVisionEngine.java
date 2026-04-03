@@ -11,6 +11,8 @@ import com.google.mlkit.vision.label.ImageLabeling;
 // 注意这里引入的是 defaults（内置默认模型）
 import com.google.mlkit.vision.label.defaults.ImageLabelerOptions;
 
+// 全局底层置信度阈值，默认 0.75
+
 public class JarvisVisionEngine {
 
     private ImageLabeler labeler;

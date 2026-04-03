@@ -25,6 +25,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+// 🚀 新增导入的包
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import androidx.appcompat.app.AlertDialog;
+import android.widget.SeekBar;
+import android.os.SystemClock;
+
 public class MainActivity extends AppCompatActivity {
 
     private PreviewView viewFinder;
@@ -44,6 +50,12 @@ public class MainActivity extends AppCompatActivity {
     private double currentScannedProtein = 0.0;
     private double currentConsumedProtein = 0.0;
 
+    // 🚀 新增：控制底层 AI 识别敏感度的全局变量（默认 0.75）必须写在 class 里面！
+    public static float CURRENT_CONFIDENCE_THRESHOLD = 0.75f;
+
+    // 🚀 新增：绝招三用到的数组，记录点击时间
+    private long[] mHits = new long[5];
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,6 +74,41 @@ public class MainActivity extends AppCompatActivity {
         // 提示用户去启动页修改强度
         tvWorkoutLog.setOnClickListener(v -> {
             Toast.makeText(this, "Sir, 痛感强度请在启动系统时确认，中途切勿更改！", Toast.LENGTH_SHORT).show();
+        });
+
+        // ==========================================
+        // 🚀 新增绝招二：点击“目标缺口”，丝滑呼出底部数据面板
+        // ==========================================
+        tvTargetProtein.setOnClickListener(v -> {
+            BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(MainActivity.this);
+            bottomSheetDialog.setContentView(R.layout.layout_data_sheet);
+
+            TextView tvData = bottomSheetDialog.findViewById(R.id.tv_nutrition_data);
+            if (tvData != null) {
+                // 动态获取真实数据，塞入抽屉面板
+                SharedPreferences prefs = getSharedPreferences("JarvisPrefs", MODE_PRIVATE);
+                float weight = prefs.getFloat("USER_WEIGHT", 70f);
+                int level = prefs.getInt("USER_WORKOUT_LEVEL", 1);
+                double target = JarvisNutritionEngine.calculateTargetProtein(weight, level);
+                double gap = JarvisNutritionEngine.calculateProteinGap(target, currentConsumedProtein);
+
+                tvData.setText(String.format(
+                        "> 目标锁定：机体代谢监控\n> 总体重设定：%.1f kg\n> 当前已吸收：%.1f g\n> 剩余缺口：%.1f g\n> 状态：建议继续进食",
+                        weight, currentConsumedProtein, gap));
+            }
+            bottomSheetDialog.show();
+        });
+
+        // ==========================================
+        // 🚀 新增绝招三：对 J.A.R.V.I.S 建议 5 连击，召唤 ROOT 面板
+        // ==========================================
+        tvJarvisAdvice.setOnClickListener(v -> {
+            System.arraycopy(mHits, 1, mHits, 0, mHits.length - 1);
+            mHits[mHits.length - 1] = SystemClock.uptimeMillis();
+            // 如果 1000 毫秒内点满 5 次
+            if (mHits[0] >= (SystemClock.uptimeMillis() - 1000)) {
+                showDeveloperPanel();
+            }
         });
 
         // 💥 终极交互：点击吸收按钮！
@@ -100,30 +147,21 @@ public class MainActivity extends AppCompatActivity {
     private void refreshNutritionPanel() {
         SharedPreferences prefs = getSharedPreferences("JarvisPrefs", MODE_PRIVATE);
 
-        // ⏳ 1. 核心进化：时间感知与跨天清零逻辑
-        // 获取今天的日期，例如 "2026-03-26"
         String todayDate = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(new java.util.Date());
-        // 获取系统记忆里上次记录的日期，如果没记过，默认给个空
         String lastDate = prefs.getString("LAST_OPEN_DATE", "");
 
-        // 判断：如果今天和上次记忆的日期不一样，说明跨天了！
         if (!todayDate.equals(lastDate)) {
             prefs.edit()
-                    .putFloat("USER_CONSUMED", 0f) // 瞬间清空肚子里的蛋白质
-                    .putString("LAST_OPEN_DATE", todayDate) // 把今天记入日历，防止重复清空
+                    .putFloat("USER_CONSUMED", 0f)
+                    .putString("LAST_OPEN_DATE", todayDate)
                     .apply();
-
-            // 给你一个硬核的早晨问候
             Toast.makeText(this, "☀️ 太阳升起。机体代谢重置完毕，今日战斗开始！", Toast.LENGTH_LONG).show();
         }
 
-        // 🧠 2. 读取最新档案
         float weight = prefs.getFloat("USER_WEIGHT", 70f);
         int level = prefs.getInt("USER_WORKOUT_LEVEL", 1);
-        // 如果上面触发了跨天清零，这里读出来的就会是新鲜的 0f
         currentConsumedProtein = prefs.getFloat("USER_CONSUMED", 0f);
 
-        // 📈 3. 计算与刷新 UI
         double targetProtein = JarvisNutritionEngine.calculateTargetProtein(weight, level);
         double gap = JarvisNutritionEngine.calculateProteinGap(targetProtein, currentConsumedProtein);
         String advice = JarvisNutritionEngine.getJarvisAdvice(targetProtein, currentConsumedProtein);
@@ -147,23 +185,27 @@ public class MainActivity extends AppCompatActivity {
 
                 imageAnalyzer.setAnalyzer(cameraExecutor, imageProxy -> {
                     jarvisEngine.analyzeFrame(imageProxy, (itemName, confidence) -> {
-                        // 提取文字和数字
+
+                        // ==========================================
+                        // 💥 终极硬核：在这里设卡拦截！
+                        // ==========================================
+                        if (confidence < CURRENT_CONFIDENCE_THRESHOLD) {
+                            // 把握不够，直接 return，不刷新界面！
+                            return;
+                        }
+
                         String nutritionInfo = JarvisNutritionEngine.analyzeFoodFromVision(itemName);
                         double proteinNum = JarvisNutritionEngine.getProteinNumberFromVision(itemName);
 
-                        // 更新 UI
                         runOnUiThread(() -> {
                             resultTextView.setText("视觉锁定: " + itemName + "\n" + nutritionInfo);
 
-                            // 🧠 如果发现了有蛋白质的东西
                             if (proteinNum > 0) {
                                 currentScannedProtein = proteinNum;
                                 btnConsume.setVisibility(View.VISIBLE);
                                 btnConsume.setText("⚡ 确认吸收 [+" + proteinNum + "g 蛋白质]");
-                                // ⏳ 记录锁定目标的时间（防闪烁机制）
                                 btnConsume.setTag(System.currentTimeMillis());
                             } else {
-                                // 🛡️ 防闪烁护盾：如果视野里没食物了，检查是不是过了 3 秒
                                 Long lastTime = (Long) btnConsume.getTag();
                                 if (lastTime != null && (System.currentTimeMillis() - lastTime > 3000)) {
                                     btnConsume.setVisibility(View.GONE);
@@ -183,6 +225,35 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }, ContextCompat.getMainExecutor(this));
+    }
+
+    // ==========================================
+    // 🚀 进化版：能真正修改底层参数的开发者面板
+    // ==========================================
+    private void showDeveloperPanel() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("⚠️ [ROOT] 开发者底层调参面板");
+
+        SeekBar seekBar = new SeekBar(this);
+        seekBar.setMax(100);
+        // 💥 根据当前的真实阈值，设置滑动条的初始位置
+        seekBar.setProgress((int) (CURRENT_CONFIDENCE_THRESHOLD * 100));
+
+        builder.setView(seekBar);
+        builder.setPositiveButton("注入新参数", (dialog, which) -> {
+
+            // 拿到滑动条的值，转成 0.0 到 1.0 的小数
+            float newThreshold = seekBar.getProgress() / 100f;
+
+            // 💥 真正覆盖底层的全局变量！
+            CURRENT_CONFIDENCE_THRESHOLD = newThreshold;
+
+            Toast.makeText(MainActivity.this,
+                    "J.A.R.V.I.S 底层视觉置信度阈值已覆盖为: " + CURRENT_CONFIDENCE_THRESHOLD,
+                    Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton("取消", null);
+        builder.show();
     }
 
     private boolean allPermissionsGranted() {

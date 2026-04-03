@@ -1,0 +1,25 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#E6121212" android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="[ J.A.R.V.I.S. 实时分析报告 ]"
+        android:textColor="#00FF00" android:typeface="monospace"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tv_nutrition_data"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="> 目标锁定：鸡胸肉\n> 蛋白质预估：30g\n> 碳水预估：0g\n> 肠胃消化负担：低\n> 状态：建议摄入"
+        android:textColor="#FFFFFF"
+        android:typeface="monospace"
+        android:lineSpacingExtra="6dp"
+        android:textSize="14sp" />
+</LinearLayout>
